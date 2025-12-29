@@ -4,12 +4,10 @@ import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
-import org.telegram.telegrambots.meta.api.objects.webapp.WebAppInfo;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+
 
 @Component
 public class MyBot extends TelegramLongPollingBot {
@@ -22,35 +20,76 @@ public class MyBot extends TelegramLongPollingBot {
         this.excelService = excelService;
     }
 
+    private final Map<Long, String> steps = new HashMap<>();
+    private final Map<Long, UserTemp> users = new HashMap<>();
 
     @Override
     public void onUpdateReceived(Update update) {
         if (update.hasMessage() && update.getMessage().hasText()) {
-            if (update.getMessage().getText().equals("/start")) {
-                sendWebAppButton(update.getMessage().getChatId());
+
+            Long chatId = update.getMessage().getChatId();
+            String text = update.getMessage().getText();
+
+            if (text.equals("/start")) {
+                send(chatId, "Assalomu alaykum!" +
+                        "\nFamiliyangizni kiriting:");
+                steps.put(chatId, "LASTNAME");
+                return;
+            }
+
+            if ("LASTNAME".equals(steps.get(chatId))) {
+                users.put(chatId, new UserTemp(text, null, null));
+                steps.put(chatId, "FIRSTNAME");
+                send(chatId, "Ismingizni kiriting:");
+                return;
+            }
+
+            if ("FIRSTNAME".equals(steps.get(chatId))) {
+                users.get(chatId).setFirstName(text);
+                steps.put(chatId, "PHONE");
+                send(chatId, "Telefon raqamingizni kiriting:");
+                return;
+            }
+
+            if ("PHONE".equals(steps.get(chatId))) {
+                users.get(chatId).setPhone(text);
+                steps.put(chatId, "CLASS");
+                send(chatId, "Sinf raqamini kiriting (1–11):");
+                return;
+            }
+
+            if ("CLASS".equals(steps.get(chatId))) {
+
+                int classNumber;
+
+                try {
+                    classNumber = Integer.parseInt(text);
+                    if (classNumber < 1 || classNumber > 11) {
+                        send(chatId, "Sinf 1 dan 11 gacha bo‘lishi kerak.");
+                        return;
+                    }
+                } catch (NumberFormatException e) {
+                    send(chatId, "Iltimos, faqat raqam kiriting.");
+                    return;
+                }
+
+                UserTemp u = users.get(chatId);
+
+                excelService.saveToExcel(
+                        u.getLastName(),
+                        u.getFirstName(),
+                        u.getPhone(),
+                        classNumber
+                );
+
+                send(chatId, "Ma’lumot saqlandi! Rahmat.");
+
+                steps.remove(chatId);
+                users.remove(chatId);
             }
         }
-
     }
-    private void sendWebAppButton(Long chatId){
-        InlineKeyboardButton webAppButton = InlineKeyboardButton.builder()
-                .text("📝 Javoblarni belgilash")
-                .webApp(new WebAppInfo("https://alaya-undeductive-subsuperficially.ngrok-free.app/test.html"))
-                .build();
-        InlineKeyboardMarkup markup = InlineKeyboardMarkup.builder()
-                .keyboard(List.of(List.of(webAppButton)))
-                .build();
 
-        SendMessage message= new SendMessage(chatId.toString(),
-                "Milliy sertifikat test javoblarini belgilang:");
-        message.setReplyMarkup(markup);
-
-        try {
-            execute(message);
-        }catch (TelegramApiException e){
-            e.printStackTrace();
-        }
-    }
 
     @Override
     public String getBotUsername() {
@@ -62,14 +101,15 @@ public class MyBot extends TelegramLongPollingBot {
         return botConfig.getToken();
     }
 
-    private void sendText(Long chatId, String text) {
-        SendMessage ms = new SendMessage();
-        ms.setChatId(chatId.toString());
-        ms.setText(text);
+    private void send(Long chatId, String text) {
+        SendMessage msg = new SendMessage();
+        msg.setChatId(chatId.toString());
+        msg.setText(text);
         try {
-            execute(ms);
+            execute(msg);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 }
+
