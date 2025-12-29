@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Milliy Sertifikat</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+          font-family: Arial;
+          background: #f2f5fb;
+          padding: 16px;
+        }
+
+        .card {
+          background: white;
+          border-radius: 14px;
+          padding: 16px;
+        }
+
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          gap: 10px;
+        }
+
+        .cell {
+          border: 1px solid #ddd;
+          border-radius: 10px;
+          padding: 8px;
+          text-align: center;
+        }
+
+        .buttons button {
+          margin: 2px;
+          padding: 6px;
+        }
+
+        input {
+          width: 100%;
+          margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="card">
+    <h2>40 ta javob</h2>
+
+    <div class="grid" id="grid"></div>
+
+    <button onclick="submit()" style="margin-top:15px;width:100%">
+        Yuborish
+    </button>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    const answers = {};
+    const grid = document.getElementById("grid");
+
+    for (let i = 1; i <= 40; i++) {
+      const div = document.createElement("div");
+      div.className = "cell";
+
+      div.innerHTML = `
+        <b>${i}</b>
+        <div class="buttons">
+          <button onclick="set(${i},'A')">A</button>
+          <button onclick="set(${i},'B')">B</button>
+          <button onclick="set(${i},'C')">C</button>
+          <button onclick="set(${i},'D')">D</button>
+        </div>
+        <input placeholder="son" oninput="set(${i},this.value)">
+      `;
+      grid.appendChild(div);
+    }
+
+    function set(q, val) {
+      answers[q] = val;
+    }
+
+    function submit() {
+      fetch("/api/answers", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          telegramId: tg.initDataUnsafe.user.id,
+          answers: answers
+        })
+      }).then(() => tg.close());
+    }
+</script>
+</body>
+</html>
