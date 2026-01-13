@@ -53,10 +53,9 @@
 		<!-- Telegram Bot -->
 		<dependency>
 			<groupId>org.telegram</groupId>
-			<artifactId>telegrambots-spring-boot-starter</artifactId>
+			<artifactId>telegrambots</artifactId>
 			<version>6.8.0</version>
 		</dependency>
-
 		<!-- Excel (.xlsx) yaratish uchun Apache POI -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
